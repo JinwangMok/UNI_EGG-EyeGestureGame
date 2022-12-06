@@ -21,11 +21,11 @@ int main(){
 		return -1;
 	}
 
-    Mat frame;
-    Rect face;
+    Mat frame, face, leftEye, rightEye;
+    Rect faceROI;
     queue<Rect> latest_faces; // index -1 : latest face rect
     uint16_t face_error_count = 0;
-
+    //TODO: 얼굴 검출 안된 경우 예외 처리(지금은 강제 종료됨)
     while(true){
         Mat gray_frame;
         vector<Rect> faces;
@@ -39,43 +39,54 @@ int main(){
         face_classifier.detectMultiScale(gray_frame, faces, 1.1, 9);     // scaleFactor=1.1, minNeighbors=9
 
         /* 얼굴 선택기(예외 발생 시 가장 최근 선택된 얼굴로 강제 대체) */
+        // TODO: 프레임 간의 얼굴 영역 마진 처리
         if(faces.size()==1){
-            face = faces.at(0);
+            faceROI = faces.at(0);
             if(latest_faces.size() < FACE_STOREGE_SIZE){
-                latest_faces.push(face);
+                latest_faces.push(faceROI);
             }else{
                 latest_faces.pop();
-                latest_faces.push(face);
+                latest_faces.push(faceROI);
             }
         }else{
             /* FACE_ERROR_MARGIN만큼 오류 처리 후에도 얼굴이 존재하지 않는다면 강제 초기화 */
             if(face_error_count < FACE_ERROR_MARGIN){
                 if(latest_faces.size() > 1){
-                    face = latest_faces.back();
+                    faceROI = latest_faces.back();
                     face_error_count++;
                 }else{
-                    face = Rect();
+                    faceROI = Rect();
                 }
             }else{
                 queue<Rect> eraser;
                 swap(eraser, latest_faces); // 얼굴 저장 배열 초기화
-                face = Rect();
+                faceROI = Rect();
                 face_error_count = 0;
             }
         }
 
-        rectangle(frame, face, Scalar(255, 0, 255), 2);
+        // rectangle(frame, face, Scalar(255, 0, 255), 2); 얼굴 상자 표시
+        
+        /* 얼굴 영역 상하 분할 후 상부 선택 */
+        faceROI.height = cvRound(faceROI.height/2);
+        leftEye = frame(Rect(faceROI.x, faceROI.y, cvRound(faceROI.width/2), faceROI.height));
+        rightEye = frame(Rect(faceROI.x+cvRound(faceROI.width/2), faceROI.y, cvRound(faceROI.width/2), faceROI.height));
+        // faceROI = frame(face);
 
-        Mat faceROI = frame(face);
-        vector<Rect> eyes;
-        eye_classifier.detectMultiScale(faceROI, eyes, 1.1, 8); // scaleFactor=1.1, minNeighbors=8
+        // cout << cvRound(faceROI.rows/2) << 0 << faceROI.cols << endl;
+        // faceROI = faceROI(Rect(0, cvRound(faceROI.rows/2), 0, faceROI.cols));
+        imshow("left", leftEye);
+        imshow("right", rightEye);
+        
+        // vector<Rect> eyes;
+        // eye_classifier.detectMultiScale(faceROI, eyes, 1.1, 8); // scaleFactor=1.1, minNeighbors=8
 
-        for (Rect eye : eyes) {
-            Point center(eye.x + eye.width / 2, eye.y + eye.height / 2);
-            circle(faceROI, center, eye.width / 2, Scalar(255, 0, 0), 2, LINE_AA);
-        }
+        // for (Rect eye : eyes) {
+        //     Point center(eye.x + eye.width / 2, eye.y + eye.height / 2);
+        //     circle(faceROI, center, eye.width / 2, Scalar(255, 0, 0), 2, LINE_AA);
+        // }
 
-        imshow("frame", frame);
+        // imshow("frame", frame);
 
         if(waitKey(10)==27){ break; }
     }
