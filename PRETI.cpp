@@ -21,10 +21,13 @@ int main(){
 		return -1;
 	}
 
-    Mat frame, face, leftEye, rightEye;
+    Mat frame, face, leftEyeROI, rightEyeROI;
     Rect faceROI;
+    vector<Rect> eyesFromLeft, eyesFromRight;
     queue<Rect> latest_faces; // index -1 : latest face rect
     uint16_t face_error_count = 0;
+    Point leftCenter, rightCenter;
+
     //TODO: 얼굴 검출 안된 경우 예외 처리(지금은 강제 종료됨)
     while(true){
         Mat gray_frame;
@@ -69,24 +72,24 @@ int main(){
         
         /* 얼굴 영역 상하 분할 후 상부 선택 */
         faceROI.height = cvRound(faceROI.height/2);
-        leftEye = frame(Rect(faceROI.x, faceROI.y, cvRound(faceROI.width/2), faceROI.height));
-        rightEye = frame(Rect(faceROI.x+cvRound(faceROI.width/2), faceROI.y, cvRound(faceROI.width/2), faceROI.height));
-        // faceROI = frame(face);
-
-        // cout << cvRound(faceROI.rows/2) << 0 << faceROI.cols << endl;
-        // faceROI = faceROI(Rect(0, cvRound(faceROI.rows/2), 0, faceROI.cols));
-        imshow("left", leftEye);
-        imshow("right", rightEye);
+        leftEyeROI = frame(Rect(faceROI.x, faceROI.y, cvRound(faceROI.width/2), faceROI.height));
+        rightEyeROI = frame(Rect(faceROI.x+cvRound(faceROI.width/2), faceROI.y, cvRound(faceROI.width/2), faceROI.height));
         
-        // vector<Rect> eyes;
-        // eye_classifier.detectMultiScale(faceROI, eyes, 1.1, 8); // scaleFactor=1.1, minNeighbors=8
+        eye_classifier.detectMultiScale(leftEyeROI, eyesFromLeft, 1.1, 8); // scaleFactor=1.1, minNeighbors=8
+        eye_classifier.detectMultiScale(rightEyeROI, eyesFromRight, 1.1, 8); // scaleFactor=1.1, minNeighbors=8
+        
+        // TODO: 안구 검출 안되는 경우(ex. 눈 감을 때) 예외 처리
+        for (Rect eye : eyesFromLeft) {
+            Point center(eye.x + eye.width / 2, eye.y + eye.height / 2);
+            circle(leftEyeROI, center, eye.width / 2, Scalar(255, 0, 0), 2, LINE_AA);
+        }
 
-        // for (Rect eye : eyes) {
-        //     Point center(eye.x + eye.width / 2, eye.y + eye.height / 2);
-        //     circle(faceROI, center, eye.width / 2, Scalar(255, 0, 0), 2, LINE_AA);
-        // }
+        for (Rect eye : eyesFromRight) {
+            Point center(eye.x + eye.width / 2, eye.y + eye.height / 2);
+            circle(rightEyeROI, center, eye.width / 2, Scalar(255, 0, 0), 2, LINE_AA);
+        }
 
-        // imshow("frame", frame);
+        imshow("frame", frame);
 
         if(waitKey(10)==27){ break; }
     }
