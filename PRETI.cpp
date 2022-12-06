@@ -30,6 +30,7 @@ int main(){
     queue<Rect> latest_faces; // index -1 : latest face rect
     uint16_t face_error_count = 0;
     Point leftCenter, rightCenter, focusPoint;
+    double sightWeight = 0;
 
     //TODO: 얼굴 검출 안된 경우 예외 처리(지금은 강제 종료됨)
     while(true){
@@ -84,19 +85,23 @@ int main(){
         // TODO: 안구 검출 안되는 경우(ex. 눈 감을 때) 예외 처리. PPT 알고리즘 5번 참고
         for (Rect eye : eyesFromLeft) {
             leftCenter = Point(eye.x + eye.width / 2, eye.y + eye.height / 2);
-            circle(frame(faceROI), leftCenter, 3, Scalar(255, 0, 0), -1, LINE_AA);
+            circle(frame(faceROI), leftCenter, 3, Scalar(0, 255, 255), -1, LINE_AA);
         }
 
         for (Rect eye : eyesFromRight) {
             rightCenter = Point((eye.x + eye.width / 2)+leftEyeROI.cols, eye.y + eye.height / 2);
-            circle(frame(faceROI), rightCenter, 3, Scalar(255, 0, 0), -1, LINE_AA);
+            circle(frame(faceROI), rightCenter, 3, Scalar(0, 255, 255), -1, LINE_AA);
         }
-
+        /* 초점 및 시야각 가중치 계산 */
         focusPoint = Point(((rightCenter.x-leftCenter.x)/2)+leftCenter.x, // ((r-l)/2) + l
                             leftCenter.y<rightCenter.y?((leftCenter.y-rightCenter.y)/2)+leftCenter.y:((rightCenter.y-leftCenter.y)/2)+rightCenter.y); 
+        sightWeight = norm(rightCenter-leftCenter);
         
-        circle(frame(faceROI), focusPoint, 3, Scalar(0, 255, 255), -1, LINE_AA);
+        /* 가중치 변화 확인 */
+        String norm_val = to_string(sightWeight);
+        putText(frame, norm_val, Point(10, 30), 2, 1, Scalar(0, 0, 255));
 
+        circle(frame(faceROI), focusPoint, 3, Scalar(0, 255, 255), -1, LINE_AA);
         line(frame(faceROI), leftCenter, rightCenter, Scalar(0, 0, 255), 1, LINE_AA);
 
         imshow("frame", frame);
