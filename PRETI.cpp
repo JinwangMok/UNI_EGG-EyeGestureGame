@@ -5,13 +5,17 @@
 #define FACE_ERROR_MARGIN 30
 #define FACE_MIN_NEIGHBORS 9
 #define EYES_MIN_NEIGHBORS 15
-
+#define DISPLAY_WIDTH 3840
+#define DISPLAY_HEIGHT 2160
 
 using namespace std;
 using namespace cv;
 
 CascadeClassifier face_classifier;
 CascadeClassifier eye_classifier;
+
+//TODO: Call by Ref로 각 프레임마다 수행하는 코드 단위로 함수 분할 필요
+
 
 int main(){
     face_classifier.load("./cascade_xmls/haarcascade_frontalface_alt2.xml");
@@ -25,14 +29,14 @@ int main(){
 	}
     
     /* 디스플레이 크기는 OS마다 다르다고 함. 확인 필요! */
-    Mat display(2160, 3840, CV_8UC3, Scalar::all(255));
+    Mat display(DISPLAY_HEIGHT, DISPLAY_WIDTH, CV_8UC3, Scalar::all(255));
     Point ORIGIN(cvRound(display.cols/2), cvRound(display.rows/2));
 
-    Mat frame, face, leftEyeROI, rightEyeROI;
+    Mat frame, leftEyeROI, rightEyeROI;
     Rect faceROI;
     vector<Rect> eyesFromLeft, eyesFromRight;
     queue<Rect> latest_faces; // index -1 : latest face rect
-    uint16_t face_error_count = 0;
+    uint16_t faceErrorCount = 0, eyeErrorCount = 0;
     Point leftCenter, rightCenter, focusPoint;
     double sightWeight = 0;
 
@@ -44,10 +48,10 @@ int main(){
         cap >> frame;
         if(frame.empty()){ break; }
 
-        flip(frame, frame, 1);                                          // 좌우반전
-        cvtColor(frame, gray_frame, COLOR_BGR2GRAY);                    // 계산을 위해 그레이 스케일로 변환
+        flip(frame, frame, 1);// 좌우반전
+        cvtColor(frame, gray_frame, COLOR_BGR2GRAY);// 계산을 위해 그레이 스케일로 변환
 
-        face_classifier.detectMultiScale(gray_frame, faces, 1.1, FACE_MIN_NEIGHBORS);     // scaleFactor=1.1, minNeighbors=9
+        face_classifier.detectMultiScale(gray_frame, faces, 1.1, FACE_MIN_NEIGHBORS);// scaleFactor=1.1, minNeighbors=9
 
         /* 얼굴 선택기(예외 발생 시 가장 최근 선택된 얼굴로 강제 대체) */
         // TODO: 프레임 간의 얼굴 영역 마진 처리
@@ -61,10 +65,10 @@ int main(){
             }
         }else{
             /* FACE_ERROR_MARGIN만큼 오류 처리 후에도 얼굴이 존재하지 않는다면 강제 초기화 */
-            if(face_error_count < FACE_ERROR_MARGIN){
+            if(faceErrorCount < FACE_ERROR_MARGIN){
                 if(latest_faces.size() > 1){
                     faceROI = latest_faces.back();
-                    face_error_count++;
+                    faceErrorCount++;
                 }else{
                     faceROI = Rect();
                 }
@@ -72,7 +76,7 @@ int main(){
                 queue<Rect> eraser;
                 swap(eraser, latest_faces); // 얼굴 저장 배열 초기화
                 faceROI = Rect();
-                face_error_count = 0;
+                faceErrorCount = 0;
             }
         }
 
@@ -113,7 +117,7 @@ int main(){
         imshow("frame", frame);
 
         /* 디스플레이에 커서 표현 */
-        // 아래의 코드는 임시
+        // 아래의 코드는 임시. 추후 직후 프레임과의 초점의 차이로 계산해야함.
         // TODO: 초기값 설정과 직전 프레임간의 오차 계산을 통한 정밀한 커서 표현. 눈으로 다른 곳을 보는 경우 고려 요망.
         circle(display, ORIGIN-(focusPoint*sightWeight/70), 10, Scalar(0, 0, 255), -1, LINE_AA);
         cout << ORIGIN-(focusPoint*sightWeight/100) << endl << endl;
