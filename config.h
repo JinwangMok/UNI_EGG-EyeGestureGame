@@ -46,13 +46,16 @@
 /*------  GAME ------*/
 #define GAME_IMG_FILE "GAME_IMAGE.jpg"
 
+/*------ PARAMETERS ------*/
+#define EYE_CONTRAST_THRESHOLD 25
+#define EYE_CONTRAST_WEIGHT 2.f
+
 cv::Point ANSWER_POINT1(685, 275);
 cv::Point ANSWER_POINT2(715, 335);
 
 
 class GAME {
 	cv::Rect ANSWER;
-
 
 public:
 	void GAME_INIT();
@@ -68,11 +71,13 @@ public:
 	cv::Point get_focus_point(){ return this->focus_point; }
 	void set_perspective_weight(double weight){ this->perspective_weight = weight; }
 	double get_perspective_weight(){ return this->perspective_weight; }
+	void initialize_members(){ this->set_focus_point(cv::Point()); this->set_perspective_weight(0.);}
 public:
 	void open_cascade();
 	void open_camera();
 	void lamping_time();
-	void detect_Eyes(cv::Mat& PLAYER_FOCUS, cv::Mat& GAME_FRAME, cv::Point* EYES_COORDINATE, std::queue<cv::Rect>& DETECTED_FACES_QUEUE, std::queue<cv::Point>& DETECTED_LEFT_EYE_QUEUE, std::queue<cv::Point>& DETECTED_RIGHT_EYE_QUEUE);
+	// void get_face_color(cv::Mat& PLAYER_FOCUS, cv::Rect& FACE_ROI);
+	void detect_Eyes(cv::Mat& PLAYER_FOCUS, cv::Mat& GAME_FRAME, cv::Point* EYES_COORDINATE, std::queue<cv::Rect>& DETECTED_FACES_QUEUE, std::queue<cv::Rect>& DETECTED_LEFT_EYE_QUEUE, std::queue<cv::Rect>& DETECTED_RIGHT_EYE_QUEUE);
 };
 
 /*------ etc ------*/

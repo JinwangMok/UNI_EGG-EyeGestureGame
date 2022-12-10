@@ -72,8 +72,27 @@ void PLAYER::lamping_time() {
     }
     cout << "Lamping TIME " << endl << BORDER_LINE << endl;
 }
+// void PLAYER::get_face_color(Mat& PLAYER_FOCUS, Rect& FACE_ROI){
+//     // NOTE: 여기에서 얼굴에 해당하는 영역의 히스토그램을 통해 가장 주요한 색상을 추출하고 멤버로 저장한다.
+//     Mat face_for_hist, hist[3];
+//     vector<Mat> face_bgr;
 
-void PLAYER::detect_Eyes(Mat& PLAYER_FOCUS, Mat& GAME_FRAME, Point* EYES_COORDINATE, queue<Rect>& DETECTED_FACES_QUEUE, queue<Point>& DETECTED_LEFT_EYE_QUEUE, queue<Point>& DETECTED_RIGHT_EYE_QUEUE){
+//     face_for_hist = PLAYER_FOCUS(FACE_ROI).clone();
+//     split(face_for_hist, face_bgr);
+
+//     for(int i = 0; i < 3; i++){
+//         int channels[] = { i };
+//         int bins = 128;
+//         int histSize[] = { bins };
+//         float range[] = { 0, 256 };
+//         const float* ranges[] = { range };
+//         calcHist(&face_bgr[i], 1, channels, Mat(), hist[i], 1, histSize, ranges);
+//         cout << hist[i] << endl;
+//     }
+    
+// }
+
+void PLAYER::detect_Eyes(Mat& PLAYER_FOCUS, Mat& GAME_FRAME, Point* EYES_COORDINATE, queue<Rect>& DETECTED_FACES_QUEUE, queue<Rect>& DETECTED_LEFT_EYE_QUEUE, queue<Rect>& DETECTED_RIGHT_EYE_QUEUE){
     /*----- INITIALIZATION -----*/
     // FLIPPING & CONVERT2GRAY 
     Mat grayscale;  // PALYER_FOCUS -> GRAYSCALE
@@ -87,8 +106,12 @@ void PLAYER::detect_Eyes(Mat& PLAYER_FOCUS, Mat& GAME_FRAME, Point* EYES_COORDIN
     Rect left_eye_ROI, right_eye_ROI;
     // EYE DETECTION
     vector<Rect> detected_left_eyes, detected_right_eyes;
-    Point left_eye_coordinate, right_eye_coordinate;
+    Rect left_eye_rect, right_eye_rect;
     uint16_t left_eye_errorCount = 0, right_eye_errorCount = 0;
+    //CALCULATE ACCULATE COORDINATE
+    Point left_eye_coordinate, right_eye_coordinate;
+    
+
     //UPDATE VARIABLES
     uint16_t left_eye_x, left_eye_y, right_eye_x, right_eye_y;
 
@@ -119,11 +142,11 @@ void PLAYER::detect_Eyes(Mat& PLAYER_FOCUS, Mat& GAME_FRAME, Point* EYES_COORDIN
         }else{
             queue<Rect> eraser;
             swap(eraser, DETECTED_FACES_QUEUE); // Erase entire queue.
+            this->initialize_members();
             face_ROI = Rect();
             faceErrorCount = 0;
         }
     }
-
     /*----- SPLIT BOTH EYES ROI -----*/
     face_ROI_coordinate = Point(face_ROI.x, face_ROI.y);
     face_width = cvRound(face_ROI.width);
@@ -139,76 +162,131 @@ void PLAYER::detect_Eyes(Mat& PLAYER_FOCUS, Mat& GAME_FRAME, Point* EYES_COORDIN
     // TODO: 안구 검출 안되는 경우(ex. 눈 감을 때) 예외 처리 필요. PPT 5번 참고
     // LEFT EYE
     if(detected_left_eyes.size()==1){// DETECT SINGLE LEFT EYE
-        left_eye_coordinate = Point((detected_left_eyes[0].x + (detected_left_eyes[0].width/2)),
-                                    (detected_left_eyes[0].y + (detected_left_eyes[0].height/2)));
+        // left_eye_coordinate = Point((detected_left_eyes[0].x + (detected_left_eyes[0].width/2)),
+        //                             (detected_left_eyes[0].y + (detected_left_eyes[0].height/2)));
+        left_eye_rect = detected_left_eyes[0];
         if(DETECTED_LEFT_EYE_QUEUE.size() > CASCADE_LEFT_EYE_ERROR_COUNT){
             DETECTED_LEFT_EYE_QUEUE.pop();
         }
-        DETECTED_LEFT_EYE_QUEUE.push(left_eye_coordinate);
+        // DETECTED_LEFT_EYE_QUEUE.push(left_eye_coordinate);
+        DETECTED_LEFT_EYE_QUEUE.push(left_eye_rect);
     }else{                          // DETECT MULTIPLE LEFT EYES
         /* CASCADE_LEFT_EYE_ERROR_COUNT만큼 오류 처리 후에도 얼굴이 존재하지 않거나 2개 이상이면 가장 최근 얼굴로 강제 초기화 */
         if(left_eye_errorCount < CASCADE_LEFT_EYE_ERROR_COUNT){
             if(DETECTED_LEFT_EYE_QUEUE.size() > 1){
-                left_eye_coordinate = DETECTED_LEFT_EYE_QUEUE.back();
+                // left_eye_coordinate = DETECTED_LEFT_EYE_QUEUE.back();
+                left_eye_rect = DETECTED_LEFT_EYE_QUEUE.back();
                 left_eye_errorCount++;
             }else{
-                left_eye_coordinate = Point();
+                // left_eye_coordinate = Point();
+                left_eye_rect = Rect();
             }
         }else{
-            queue<Point> eraser;
+            queue<Rect> eraser;
             swap(eraser, DETECTED_LEFT_EYE_QUEUE); // Erase entire queue.
-            left_eye_coordinate = Point();
+            this->initialize_members();
+            // left_eye_coordinate = Point();
+            left_eye_rect = Rect();
             left_eye_errorCount = 0;
         }
     }
     // RIGHT EYE
     if(detected_right_eyes.size()==1){// DETECT SINGLE RIGHT EYE
-        right_eye_coordinate = Point((detected_right_eyes[0].x + (detected_right_eyes[0].width/2)),
-                                    (detected_right_eyes[0].y + (detected_right_eyes[0].height/2)));
+        // right_eye_coordinate = Point((detected_right_eyes[0].x + (detected_right_eyes[0].width/2)),
+        //                             (detected_right_eyes[0].y + (detected_right_eyes[0].height/2)));
+        right_eye_rect = detected_right_eyes[0];
         if(DETECTED_RIGHT_EYE_QUEUE.size() > CASCADE_RIGHT_EYE_ERROR_COUNT){
             DETECTED_RIGHT_EYE_QUEUE.pop();
         }
-        DETECTED_RIGHT_EYE_QUEUE.push(right_eye_coordinate);
+        // DETECTED_RIGHT_EYE_QUEUE.push(right_eye_coordinate);
+        DETECTED_RIGHT_EYE_QUEUE.push(right_eye_rect);
     }else{                          // DETECT MULTIPLE RIGHT EYES
         /* CASCADE_RIGHT_EYE_ERROR_COUNT만큼 오류 처리 후에도 얼굴이 존재하지 않거나 2개 이상이면 가장 최근 얼굴로 강제 초기화 */
         if(right_eye_errorCount < CASCADE_RIGHT_EYE_ERROR_COUNT){
             if(DETECTED_LEFT_EYE_QUEUE.size() > 1){
-                right_eye_coordinate = DETECTED_RIGHT_EYE_QUEUE.back();
+                // right_eye_coordinate = DETECTED_RIGHT_EYE_QUEUE.back();
+                right_eye_rect = DETECTED_RIGHT_EYE_QUEUE.back();
                 right_eye_errorCount++;
             }else{
-                right_eye_coordinate = Point();
+                // right_eye_coordinate = Point();
+                right_eye_rect = Rect();
             }
         }else{
-            queue<Point> eraser;
+            queue<Rect> eraser;
             swap(eraser, DETECTED_RIGHT_EYE_QUEUE); // Erase entire queue.
-            right_eye_coordinate = Point();
+            this->initialize_members();
+            // right_eye_coordinate = Point();
+            right_eye_rect = Rect();
             right_eye_errorCount = 0;
         }
     }
-    
+    /* CALCULATE ACCULATE COORDINATE */ 
+    // 여기에서 Point left_eye_coordinate, right_eye_coordinate 구해야함!
+    // face_ROI, left_eye_rect, right_eye_rect
+    Mat left_eye_grayscale, right_eye_grayscale;
+    Mat left_eye_binary, right_eye_binary;
+    // 좌표 이동
+    left_eye_rect += Point(left_eye_ROI.x, left_eye_ROI.y);
+    right_eye_rect += Point(right_eye_ROI.x, right_eye_ROI.y);
+    // 영역 선택
+    left_eye_grayscale = PLAYER_FOCUS(left_eye_rect).clone();
+    right_eye_grayscale = PLAYER_FOCUS(right_eye_rect).clone();
+    // 그레이스케일 변환
+    cvtColor(left_eye_grayscale, left_eye_grayscale, COLOR_BGR2GRAY);
+    cvtColor(right_eye_grayscale, right_eye_grayscale, COLOR_BGR2GRAY);
+    // 명암비 증가 (threshold=25, weight=2.f)
+    left_eye_grayscale += (left_eye_grayscale - EYE_CONTRAST_THRESHOLD) * EYE_CONTRAST_WEIGHT;
+    right_eye_grayscale += (right_eye_grayscale - EYE_CONTRAST_THRESHOLD) * EYE_CONTRAST_WEIGHT;
+    // 이진화
+    threshold(left_eye_grayscale, left_eye_binary, 0, 255, THRESH_BINARY | THRESH_OTSU);
+    threshold(right_eye_grayscale, right_eye_binary, 0, 255, THRESH_BINARY | THRESH_OTSU);
+
+    // 좌동공의 우측끝 탐색(테스트중)
+    Point left_eye_center(left_eye_binary.cols/2, left_eye_binary.rows/2);
+    cout << left_eye_binary.at<bool>(left_eye_center) << endl;
+
+    // uint16_t margin_count = 0;
+    // while(true){
+    //     if(left_eye_binary.at<bool>(left_eye_center)){
+    //         // white pixel 1
+    //         if(margin_cout > 9){ // 10 pixel 동안 하얀색이면
+    //             break;
+    //         }else{
+    //             left_eye_center.x++;
+    //             margin_count++;
+    //         }
+    //     }else{
+    //         //black pixel
+
+    //     }
+    // }
+
+
+
+    imshow("left_bin", left_eye_binary);
+
     /* UPDATE VARIABLES */
-    left_eye_x = left_eye_ROI.x+left_eye_coordinate.x;
-    left_eye_y = left_eye_ROI.y+left_eye_coordinate.y;
-    right_eye_x = right_eye_ROI.x+right_eye_coordinate.x;
-    right_eye_y = right_eye_ROI.y+right_eye_coordinate.y;
+    // left_eye_x = left_eye_ROI.x+left_eye_coordinate.x;
+    // left_eye_y = left_eye_ROI.y+left_eye_coordinate.y;
+    // right_eye_x = right_eye_ROI.x+right_eye_coordinate.x;
+    // right_eye_y = right_eye_ROI.y+right_eye_coordinate.y;
 
-    *(EYES_COORDINATE) = Point(left_eye_x, left_eye_y);     // LEFT EYE
-    *(EYES_COORDINATE+1) = Point(right_eye_x, right_eye_y); // RIGHT EYE
+    // *(EYES_COORDINATE) = Point(left_eye_x, left_eye_y);     // LEFT EYE
+    // *(EYES_COORDINATE+1) = Point(right_eye_x, right_eye_y); // RIGHT EYE
 
-    this->set_focus_point(Point(((right_eye_x-left_eye_x)/2)+left_eye_x,
-                                left_eye_y<right_eye_y?((left_eye_y-right_eye_y)/2)+left_eye_y:((right_eye_y-left_eye_y)/2)+right_eye_y));
-    this->set_perspective_weight(norm(Point(right_eye_x, right_eye_y)-Point(left_eye_x, left_eye_y)));
+    // this->set_focus_point(Point(((right_eye_x-left_eye_x)/2)+left_eye_x,
+    //                             left_eye_y<right_eye_y?((left_eye_y-right_eye_y)/2)+left_eye_y:((right_eye_y-left_eye_y)/2)+right_eye_y));
+    // this->set_perspective_weight(norm(Point(right_eye_x, right_eye_y)-Point(left_eye_x, left_eye_y)));
 
-    cout << BORDER_LINE << endl << "[DETECTED]" << endl;
-    cout << "Left Eye Coordinate: " << "x=" << left_eye_ROI.x+left_eye_coordinate.x << "y=" << left_eye_ROI.y+left_eye_coordinate.y << endl;
-    cout << "Right Eye Coordinate: " << "x=" << right_eye_ROI.x+right_eye_coordinate.x << "y=" << right_eye_ROI.y+right_eye_coordinate.y << endl;
-    cout << BORDER_LINE << endl << endl;
+    // cout << BORDER_LINE << endl << "[DETECTED]" << endl;
+    // cout << "Left Eye Coordinate: " << "x=" << left_eye_ROI.x+left_eye_coordinate.x << "y=" << left_eye_ROI.y+left_eye_coordinate.y << endl;
+    // cout << "Right Eye Coordinate: " << "x=" << right_eye_ROI.x+right_eye_coordinate.x << "y=" << right_eye_ROI.y+right_eye_coordinate.y << endl;
+    // cout << BORDER_LINE << endl << endl;
 }
 
 int main(int argc, char** argv){
     /*----- variables -----*/
-    queue<Rect> detected_faces_queue;
-    queue<Point> detected_left_eye_queue, detected_right_eye_queue;
+    queue<Rect> detected_faces_queue, detected_left_eye_queue, detected_right_eye_queue;
     Point eyes_coordinate[2]; //[0]:Left, [1]:Right
 
     GAME game;
@@ -218,12 +296,26 @@ int main(int argc, char** argv){
     player.open_cascade();
     player.open_camera();
     player.lamping_time();
-    player.detect_Eyes(player_focus, game_frame, eyes_coordinate, detected_faces_queue, detected_left_eye_queue, detected_right_eye_queue);
-    
+    // player.detect_Eyes(player_focus, game_frame, eyes_coordinate, detected_faces_queue, detected_left_eye_queue, detected_right_eye_queue);
+        
     double pw = player.get_perspective_weight();
     Point fp = player.get_focus_point();
     
-    cout << pw << endl;
-    cout << fp << endl;
+    circle(player_focus, fp, 3, Scalar(0, 0, 255), -1, LINE_AA);
 
+    imshow("Player", player_focus);
+    while(true){
+        cap >> player_focus;
+        player.detect_Eyes(player_focus, game_frame, eyes_coordinate, detected_faces_queue, detected_left_eye_queue, detected_right_eye_queue);
+        
+        double pw = player.get_perspective_weight();
+        Point fp = player.get_focus_point();
+        
+        // circle(player_focus, fp, 3, Scalar(0, 0, 255), -1, LINE_AA);
+        cvtColor(player_focus, player_focus, COLOR_BGR2GRAY);
+        imshow("Player", player_focus);
+        if(waitKey(10)==27){ break; }
+    }
+    // waitKey(0);
+    destroyAllWindows();
 }
