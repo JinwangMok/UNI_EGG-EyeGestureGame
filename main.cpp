@@ -73,7 +73,7 @@ void PLAYER::lamping_time() {
     cout << "Lamping TIME " << endl << BORDER_LINE << endl;
 }
 
-void PLAYER::detect_Eyes(Mat& PLAYER_FOCUS, Mat& GAME_FRAME, queue<Rect>& DETECTED_FACES_QUEUE, queue<Point>& DETECTED_LEFT_EYE_QUEUE, queue<Point>& DETECTED_RIGHT_EYE_QUEUE){
+void PLAYER::detect_Eyes(Mat& PLAYER_FOCUS, Mat& GAME_FRAME, Point* EYES_COORDINATE, queue<Rect>& DETECTED_FACES_QUEUE, queue<Point>& DETECTED_LEFT_EYE_QUEUE, queue<Point>& DETECTED_RIGHT_EYE_QUEUE){
     /*----- INITIALIZATION -----*/
     // FLIPPING & CONVERT2GRAY 
     Mat grayscale;  // PALYER_FOCUS -> GRAYSCALE
@@ -89,9 +89,8 @@ void PLAYER::detect_Eyes(Mat& PLAYER_FOCUS, Mat& GAME_FRAME, queue<Rect>& DETECT
     vector<Rect> detected_left_eyes, detected_right_eyes;
     Point left_eye_coordinate, right_eye_coordinate;
     uint16_t left_eye_errorCount = 0, right_eye_errorCount = 0;
-    // ETC
-    Point focus;
-    uint16_t eye_count = 0;      // eye ditected count
+    //UPDATE VARIABLES
+    uint16_t left_eye_x, left_eye_y, right_eye_x, right_eye_y;
 
     /*----- FLIPPING & CONVERT2GRAY -----*/
     flip(PLAYER_FOCUS, PLAYER_FOCUS, 1);  // reverse left, right
@@ -186,6 +185,19 @@ void PLAYER::detect_Eyes(Mat& PLAYER_FOCUS, Mat& GAME_FRAME, queue<Rect>& DETECT
             right_eye_errorCount = 0;
         }
     }
+    
+    /* UPDATE VARIABLES */
+    left_eye_x = left_eye_ROI.x+left_eye_coordinate.x;
+    left_eye_y = left_eye_ROI.y+left_eye_coordinate.y;
+    right_eye_x = right_eye_ROI.x+right_eye_coordinate.x;
+    right_eye_y = right_eye_ROI.y+right_eye_coordinate.y;
+
+    *(EYES_COORDINATE) = Point(left_eye_x, left_eye_y);     // LEFT EYE
+    *(EYES_COORDINATE+1) = Point(right_eye_x, right_eye_y); // RIGHT EYE
+
+    this->set_focus_point(Point(((right_eye_x-left_eye_x)/2)+left_eye_x,
+                                left_eye_y<right_eye_y?((left_eye_y-right_eye_y)/2)+left_eye_y:((right_eye_y-left_eye_y)/2)+right_eye_y));
+    this->set_perspective_weight(norm(Point(right_eye_x, right_eye_y)-Point(left_eye_x, left_eye_y)));
 
     cout << BORDER_LINE << endl << "[DETECTED]" << endl;
     cout << "Left Eye Coordinate: " << "x=" << left_eye_ROI.x+left_eye_coordinate.x << "y=" << left_eye_ROI.y+left_eye_coordinate.y << endl;
@@ -194,8 +206,11 @@ void PLAYER::detect_Eyes(Mat& PLAYER_FOCUS, Mat& GAME_FRAME, queue<Rect>& DETECT
 }
 
 int main(int argc, char** argv){
+    /*----- variables -----*/
     queue<Rect> detected_faces_queue;
-    queue<Point> detected_left_eye_queue, detected_right_eye_queue; // NOTE: queue index -1 is latest one.
+    queue<Point> detected_left_eye_queue, detected_right_eye_queue;
+    Point eyes_coordinate[2]; //[0]:Left, [1]:Right
+
     GAME game;
     game.GAME_INIT();
 
@@ -203,118 +218,12 @@ int main(int argc, char** argv){
     player.open_cascade();
     player.open_camera();
     player.lamping_time();
-    player.detect_Eyes(player_focus, game_frame, detected_faces_queue, detected_left_eye_queue, detected_right_eye_queue);
-    // waitKey(0);
-    // destroyAllWindows();
-    // face_classifier.load("./cascade_xmls/haarcascade_frontalface_alt2.xml");
-	// eye_classifier.load("./cascade_xmls/haarcascade_eye.xml");
-
-    // VideoCapture cap(0);
-
-	// if (face_classifier.empty() || eye_classifier.empty() || !cap.isOpened()){
-	// 	cerr << "Something load failed!" << endl;
-	// 	return -1;
-	// }
+    player.detect_Eyes(player_focus, game_frame, eyes_coordinate, detected_faces_queue, detected_left_eye_queue, detected_right_eye_queue);
     
-    // /* 디스플레이 크기는 OS마다 다르다고 함. 확인 필요! */
-    // Mat display(DISPLAY_HEIGHT, DISPLAY_WIDTH, CV_8UC3, Scalar::all(255));
-    // Point ORIGIN(cvRound(display.cols/2), cvRound(display.rows/2));
+    double pw = player.get_perspective_weight();
+    Point fp = player.get_focus_point();
+    
+    cout << pw << endl;
+    cout << fp << endl;
 
-    // Mat frame, leftEyeROI, rightEyeROI;
-    // Rect faceROI;
-    // vector<Rect> eyesFromLeft, eyesFromRight;
-    // queue<Rect> latest_faces; // index -1 : latest face rect
-    // uint16_t faceErrorCount = 0, eyeErrorCount = 0;
-    // Point leftCenter, rightCenter, focusPoint;
-    // double sightWeight = 0;
-
-    // //TODO: 얼굴 검출 안된 경우 예외 처리(지금은 강제 종료됨)
-    // while(true){
-    //     Mat gray_frame;
-    //     vector<Rect> faces;
-
-    //     cap >> frame;
-    //     if(frame.empty()){ break; }
-
-    //     flip(frame, frame, 1);// 좌우반전
-    //     cvtColor(frame, gray_frame, COLOR_BGR2GRAY);// 계산을 위해 그레이 스케일로 변환
-
-    //     face_classifier.detectMultiScale(gray_frame, faces, 1.1, FACE_MIN_NEIGHBORS);// scaleFactor=1.1, minNeighbors=9
-
-    //     /* 얼굴 선택기(예외 발생 시 가장 최근 선택된 얼굴로 강제 대체) */
-    //     // TODO: 프레임 간의 얼굴 영역 마진 처리
-    //     if(faces.size()==1){
-    //         faceROI = faces.at(0);
-    //         if(latest_faces.size() < FACE_STOREGE_SIZE){
-    //             latest_faces.push(faceROI);
-    //         }else{
-    //             latest_faces.pop();
-    //             latest_faces.push(faceROI);
-    //         }
-    //     }else{
-    //         /* FACE_ERROR_MARGIN만큼 오류 처리 후에도 얼굴이 존재하지 않는다면 강제 초기화 */
-    //         if(faceErrorCount < FACE_ERROR_MARGIN){
-    //             if(latest_faces.size() > 1){
-    //                 faceROI = latest_faces.back();
-    //                 faceErrorCount++;
-    //             }else{
-    //                 faceROI = Rect();
-    //             }
-    //         }else{
-    //             queue<Rect> eraser;
-    //             swap(eraser, latest_faces); // 얼굴 저장 배열 초기화
-    //             faceROI = Rect();
-    //             faceErrorCount = 0;
-    //         }
-    //     }
-
-    //     // rectangle(frame, face, Scalar(255, 0, 255), 2); 얼굴 상자 표시
-        
-    //     /* 얼굴 영역 상하 분할 후 상부 선택 */
-    //     faceROI.height = cvRound(faceROI.height/2);
-    //     leftEyeROI = frame(Rect(faceROI.x, faceROI.y, cvRound(faceROI.width/2), faceROI.height));
-    //     rightEyeROI = frame(Rect(faceROI.x+cvRound(faceROI.width/2), faceROI.y, cvRound(faceROI.width/2), faceROI.height));
-        
-    //     eye_classifier.detectMultiScale(leftEyeROI, eyesFromLeft, 1.1, EYES_MIN_NEIGHBORS); // scaleFactor=1.1
-    //     eye_classifier.detectMultiScale(rightEyeROI, eyesFromRight, 1.1, EYES_MIN_NEIGHBORS); // scaleFactor=1.1
-        
-    //     /* 양안의 동공 검출 */
-    //     // TODO: HoughCircles 사용해야 함. HoubhCircles(InputArray, OutputArray, int method, double dp_ratio, double minDist최소거리, 
-    //     //                                           int param1=100캐니에지 높은 임계값, int param=2축적 배열에서 원 검출을 위한 임계값, intminRadius, int maxRadius) >> 9-5.cpp참고
-    //     // ⭐️12.08 16:17) 허프 검출이든, 하르 검출이든 둘중에 하나만 하자고 통합함. 그 중 하르 검출로 의견을 모았음. 대신, IPIU 논문쓸 때 두개를 실험해서 내는 걸로!
-    //     // TODO: 안구 검출 안되는 경우(ex. 눈 감을 때) 예외 처리. PPT 알고리즘 5번 참고
-    //     for (Rect eye : eyesFromLeft) {
-    //         leftCenter = Point(eye.x + eye.width / 2, eye.y + eye.height / 2);
-    //         circle(frame(faceROI), leftCenter, 3, Scalar(0, 255, 255), -1, LINE_AA);
-    //     }
-
-    //     for (Rect eye : eyesFromRight) {
-    //         rightCenter = Point((eye.x + eye.width / 2)+leftEyeROI.cols, eye.y + eye.height / 2);
-    //         circle(frame(faceROI), rightCenter, 3, Scalar(0, 255, 255), -1, LINE_AA);
-    //     }
-
-    //     /* 초점 및 시야각 가중치 계산 */
-    //     focusPoint = Point(((rightCenter.x-leftCenter.x)/2)+leftCenter.x, // ((r-l)/2) + l
-    //                         leftCenter.y<rightCenter.y?((leftCenter.y-rightCenter.y)/2)+leftCenter.y:((rightCenter.y-leftCenter.y)/2)+rightCenter.y); 
-    //     sightWeight = norm(rightCenter-leftCenter);
-        
-    //     /* 가중치 변화 확인 */
-    //     // String norm_val = to_string(sightWeight);
-    //     // putText(frame, norm_val, Point(10, 30), 2, 1, Scalar(0, 0, 255));
-
-    //     circle(frame(faceROI), focusPoint, 3, Scalar(0, 255, 255), -1, LINE_AA);
-    //     line(frame(faceROI), leftCenter, rightCenter, Scalar(0, 0, 255), 1, LINE_AA);
-
-    //     imshow("frame", frame);
-
-    //     /* 디스플레이에 커서 표현 */
-    //     // 아래의 코드는 임시. 추후 직후 프레임과의 초점의 차이로 계산해야함.
-    //     // TODO: 초기값 설정과 직전 프레임간의 오차 계산을 통한 정밀한 커서 표현. 눈으로 다른 곳을 보는 경우 고려 요망.
-    //     circle(display, ORIGIN-(focusPoint*sightWeight/70), 10, Scalar(0, 0, 255), -1, LINE_AA);
-    //     cout << ORIGIN-(focusPoint*sightWeight/100) << endl << endl;
-    //     imshow("Main", display);
-
-    //     if(waitKey(10)==27){ break; }
-    // }
-    // destroyAllWindows();
 }

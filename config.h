@@ -60,11 +60,19 @@ public:
 };
 
 class PLAYER {
+private:
+	cv::Point focus_point;
+	double perspective_weight;
+public:
+	void set_focus_point(cv::Point focus){ this->focus_point = focus; }
+	cv::Point get_focus_point(){ return this->focus_point; }
+	void set_perspective_weight(double weight){ this->perspective_weight = weight; }
+	double get_perspective_weight(){ return this->perspective_weight; }
 public:
 	void open_cascade();
 	void open_camera();
 	void lamping_time();
-	void detect_Eyes(cv::Mat& PLAYER_FOCUS, cv::Mat& GAME_FRAME, std::queue<cv::Rect>& DETECTED_FACES_QUEUE, std::queue<cv::Point>& DETECTED_LEFT_EYE_QUEUE, std::queue<cv::Point>& DETECTED_RIGHT_EYE_QUEUE);
+	void detect_Eyes(cv::Mat& PLAYER_FOCUS, cv::Mat& GAME_FRAME, cv::Point* EYES_COORDINATE, std::queue<cv::Rect>& DETECTED_FACES_QUEUE, std::queue<cv::Point>& DETECTED_LEFT_EYE_QUEUE, std::queue<cv::Point>& DETECTED_RIGHT_EYE_QUEUE);
 };
 
 /*------ etc ------*/
