@@ -238,29 +238,35 @@ void PLAYER::detect_Eyes(Mat& PLAYER_FOCUS, Mat& GAME_FRAME, Point* EYES_COORDIN
     left_eye_grayscale += (left_eye_grayscale - EYE_CONTRAST_THRESHOLD) * EYE_CONTRAST_WEIGHT;
     right_eye_grayscale += (right_eye_grayscale - EYE_CONTRAST_THRESHOLD) * EYE_CONTRAST_WEIGHT;
     // 이진화
-    threshold(left_eye_grayscale, left_eye_binary, 0, 255, THRESH_BINARY | THRESH_OTSU);
-    threshold(right_eye_grayscale, right_eye_binary, 0, 255, THRESH_BINARY | THRESH_OTSU);
+    threshold(left_eye_grayscale, left_eye_binary, 0, 255, THRESH_BINARY | THRESH_OTSU | THRESH_BINARY_INV);
+    threshold(right_eye_grayscale, right_eye_binary, 0, 255, THRESH_BINARY | THRESH_OTSU | THRESH_BINARY_INV);
+    // 모폴로지
+    morphologyEx(left_eye_binary, left_eye_binary, MORPH_CLOSE, Mat());
+    morphologyEx(right_eye_binary, right_eye_binary, MORPH_CLOSE, Mat());
 
     // 좌동공의 우측끝 탐색(테스트중)
     Point left_eye_center(left_eye_binary.cols/2, left_eye_binary.rows/2);
-    cout << left_eye_binary.at<bool>(left_eye_center) << endl;
+    // cout << left_eye_binary.at<bool>(left_eye_center) << endl;
 
-    // uint16_t margin_count = 0;
+    uint16_t margin_count = 0;
+    // TODO: while문 내부 수정 필요! binary_inverse.
     // while(true){
-    //     if(left_eye_binary.at<bool>(left_eye_center)){
-    //         // white pixel 1
-    //         if(margin_cout > 9){ // 10 pixel 동안 하얀색이면
+    //     if(!left_eye_binary.at<bool>(left_eye_center)){
+    //         // white pixel 0
+    //         if(margin_count > 3){ // 10 pixel 동안 하얀색이면
     //             break;
     //         }else{
-    //             left_eye_center.x++;
+    //             left_eye_center.x++;//단순 증가 보다 추후 조건후 증가가 필요할듯
     //             margin_count++;
     //         }
     //     }else{
-    //         //black pixel
-
+    //         //black pixel 1
+    //         left_eye_center.x++;
     //     }
     // }
 
+    cvtColor(left_eye_binary, left_eye_binary, COLOR_GRAY2BGR);
+    circle(left_eye_binary, left_eye_center, 1, Scalar(0, 0, 255), -1, LINE_AA);
 
 
     imshow("left_bin", left_eye_binary);
