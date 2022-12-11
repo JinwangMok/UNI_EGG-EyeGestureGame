@@ -389,14 +389,37 @@ int main(int argc, char** argv){
     player.open_cascade();
     player.open_camera();
     player.lamping_time();
+
+    /* 세팅 전 초기 마진 */
+    for(int i = 0; i < 50; i++){
+        cap >> player_focus;
+        player.detect_Eyes(player_focus, game_frame, eyes_coordinate, detected_faces_queue, detected_left_eye_queue, detected_right_eye_queue);
+    }
+
     player.initial_setup(player_focus, game_frame, eyes_coordinate, detected_faces_queue, detected_left_eye_queue, detected_right_eye_queue);
-        
-    double pw = player.get_perspective_weight();
-    Point fp = player.get_focus_point();
 
-    // for(int i = 0; i < 8; i++){
-
-    // }
+    /* 초기 설정 값 출력 */
+    cout << endl << BORDER_LINE << "[ INITIAL STATES ]" << endl;
+    cout <<  "Focus Points : ";
+    for(int i = 0; i < 8; i++){
+        cout  << player.get_initial_focus_points()[i] << "\t"; 
+    }
+    cout << endl << endl << "Perspective Weights : ";
+    for(int i = 0; i < 8; i++){
+        cout  << player.get_initial_perspective_weights()[i] << "\t"; 
+    }
+    cout << endl << endl << "Faces : ";
+    for(int i = 0; i < 8; i++){
+        cout  << player.get_initial_faces()[i] << "\t"; 
+    }
+    cout << endl << endl << "Left Eyes : ";
+    for(int i = 0; i < 8; i++){
+        cout  << player.get_initial_left_eyes()[i] << "\t"; 
+    }
+    cout << endl << endl << "Right Eyes : ";
+    for(int i = 0; i < 8; i++){
+        cout  << player.get_initial_right_eyes()[i] << "\t"; 
+    }
 
     while(true){
         cap >> player_focus;
