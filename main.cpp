@@ -51,8 +51,8 @@ T get_most_frequent_value(T* buffer){
     for(j = 0; j < INITIALIZATION_FRAME_NUM; j++){
         if(vals[j] > freqeuncy){
             freqeuncy = vals[j];
+            result = keys[j];
         }
-        result = keys[j];
     }
 
     return result;
