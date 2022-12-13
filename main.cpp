@@ -14,6 +14,7 @@ VideoCapture cap;
 
 /*----- game -----*/
 Mat game_frame;
+Point answer_pt1, answer_pt2;
 
 /*----- player -----*/
 Mat player_focus(Size(DEFAULT_WIDTH, DEFAULT_HEIGHT), CV_8UC3);
@@ -21,23 +22,44 @@ Mat player_focus(Size(DEFAULT_WIDTH, DEFAULT_HEIGHT), CV_8UC3);
 void GAME::GAME_INIT(){
     /* NOT SUPPORT DISPLAY SETTING FROM USER */
     game_frame = imread(GAME_IMG_FILE, IMREAD_COLOR);
+    Size game_size = game_frame.size();
+    answer_pt1 = Point(cvRound(game_size.width*0.614), cvRound(game_size.height*0.368));
+    answer_pt2 = Point(cvRound(game_size.width*0.625), cvRound(game_size.height*0.405));
     if (game_frame.empty()) { cout << "Game image loading Error occured." << endl; return; }
-    ANSWER = Rect(ANSWER_POINT1, ANSWER_POINT2);
-    game_frame(ANSWER) = 0; // Masking Answer
+    ANSWER = Rect(answer_pt1, answer_pt2);
+    rectangle(game_frame, ANSWER, Scalar(0, 0, 255), 3, LINE_AA);
 }
 
-void GAME::GAME_PLAY(Point& CURSOR, Point& CURSOR_EX){
-    /* GET FOCUS COORDINATE */
-    // if (CURSOR.x == 0 && CURSOR.y == 0) {   // CURSOR ==0 -> return
-    //     return -1;
-    // }
-    // else if (CURSOR_ex.x == 0 && CURSOR_ex.y == 0) {    // CURSOR-ex == 0 -> reutrn
-    //     return -1;
-    // }
-    // else {
-    //     cv::Point diff = CURSOR - CURSOR_ex;
-    //     circle(game_frame, CURSOR - diff*30, 3, CURSOR_COLOR, 2, FILLED);
-    // }
+bool GAME::GAME_PLAY(Point& CURSOR, int GESTURE_CODE){
+    switch(GESTURE_CODE){
+        case GESTURE_STOP:
+            return false;
+            break;
+        case GESTURE_UP:
+            CURSOR.y -= CURSOR_STEP;
+            break;
+        case GESTURE_DOWN:
+            CURSOR.y += CURSOR_STEP;
+            break;
+        case GESTURE_LEFT:
+            CURSOR.x -= CURSOR_STEP;
+            break;
+        case GESTURE_RIGHT:
+            CURSOR.x += CURSOR_STEP;
+            break;
+        case GESTURE_ERROR:
+            return false;
+            break;
+        default:
+            break;
+    }
+
+    if(CURSOR.x <= answer_pt2.x && CURSOR.x >= answer_pt1.x && 
+       CURSOR.y <= answer_pt2.y && CURSOR.y >= answer_pt1.y){
+        return true;
+    }else{
+        return false;
+    }
 }
 
 void PLAYER::open_cascade(){
@@ -73,7 +95,7 @@ void PLAYER::lamping_time() {
     cout << "Lamping TIME " << endl << BORDER_LINE << endl;
 }
 
-int PLAYER::detect_gesture(Mat& PLAYER_FOCUS, Mat& GAME_FRAME){
+int PLAYER::detect_gesture(Mat& PLAYER_FOCUS){
     /*----- Variables -----*/
     // FLIPPING & CONVERT2GRAY 
     Mat grayscale;  // PALYER_FOCUS -> GRAYSCALE
@@ -135,6 +157,10 @@ int PLAYER::detect_gesture(Mat& PLAYER_FOCUS, Mat& GAME_FRAME){
     }else{
         return GESTURE_STOP; // MULTIPLE RIGHT EYES DETECTED ERROR
     }
+    Point left_eye_point(left_eye_ROI.x+left_eye_center.x, left_eye_ROI.y+left_eye_center.y);
+    Point right_eye_point(right_eye_ROI.x+right_eye_center.x, right_eye_ROI.y+right_eye_center.y);
+    circle(player_focus, left_eye_point, 5, Scalar(0, 0, 255), -1, LINE_AA);
+    circle(player_focus, right_eye_point, 5, Scalar(0, 0, 255), -1, LINE_AA);
 
     /* RETURN GESTURES */
     if(left_eye_closed && !right_eye_closed){
@@ -150,7 +176,7 @@ int PLAYER::detect_gesture(Mat& PLAYER_FOCUS, Mat& GAME_FRAME){
             return GESTURE_STOP;
         }
     }
-
+    
     // ELSE
     return GESTURE_ERROR;
 }
@@ -158,6 +184,7 @@ int PLAYER::detect_gesture(Mat& PLAYER_FOCUS, Mat& GAME_FRAME){
 int main(int argc, char** argv){
     /*----- variables -----*/
     int gesture;
+    bool game_finished = false;
 
     GAME game;
     game.GAME_INIT();
@@ -167,9 +194,15 @@ int main(int argc, char** argv){
     player.open_camera();
     player.lamping_time();
 
+    Point cursor(game_frame.cols/2, game_frame.rows/2);
+    Mat game_window;
     while(true){
         cap >> player_focus;
-        gesture = player.detect_gesture(player_focus, game_frame);
+        gesture = player.detect_gesture(player_focus);
+        
+        game_finished = game.GAME_PLAY(cursor, gesture);
+        game_window = game_frame.clone();
+        circle(game_window, cursor, 20, Scalar(0, 255, 0), -1, LINE_AA);
         String gesture_str;
         switch(gesture){
             case 0:
@@ -191,10 +224,11 @@ int main(int argc, char** argv){
                 break;
         }
         
-        putText(player_focus, gesture_str, Point(10, 30), 2, 1, Scalar(0, 0, 255));
+        putText(player_focus, gesture_str, Point(10, 30), 4, 1, Scalar(0, 0, 255));
 
+        imshow("Game", game_window);
         imshow("Player", player_focus);
-        if(waitKey(10)==27){ break; }
+        if(waitKey(10)==27 || game_finished){ break; }
     }
     
     destroyAllWindows();

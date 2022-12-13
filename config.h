@@ -19,8 +19,8 @@
 #ifdef __APPLE__    
 #include <unistd.h>
 /*------ CAMERA_SETTINGS ------- */
-#define DEFAULT_WIDTH 3840
-#define DEFAULT_HEIGHT 2160
+#define DEFAULT_WIDTH 1280
+#define DEFAULT_HEIGHT 720
 
 /*------ CASCADE_DIR -------*/
 #define CASCADE_FACE "./cascade_xmls/haarcascade_frontalface_alt2.xml"
@@ -35,6 +35,7 @@
 
 /*------  GAME ------*/
 #define GAME_IMG_FILE "GAME_IMAGE.jpg"
+#define CURSOR_STEP 10
 
 /*------  GESTURE ------*/
 #define GESTURE_ERROR -1
@@ -50,16 +51,12 @@
 #define CASCADE_FACE_MIN_NEIGHBORS 9
 #define CASCADE_EYES_MIN_NEIGHBORS 15
 
-cv::Point ANSWER_POINT1(685, 275);
-cv::Point ANSWER_POINT2(715, 335);
-
-
 class GAME {
 	cv::Rect ANSWER;
 
 public:
 	void GAME_INIT();
-	void GAME_PLAY(cv::Point& CURSUR, cv::Point& CURSUR_EX);
+	bool GAME_PLAY(cv::Point& CURSOR,int GESTURE_CODE);
 };
 
 class PLAYER {
@@ -67,7 +64,7 @@ public:
 	void open_cascade();
 	void open_camera();
 	void lamping_time();
-	int detect_gesture(cv::Mat& PLAYER_FOCUS, cv::Mat& GAME_FRAME);
+	int detect_gesture(cv::Mat& PLAYER_FOCUS);
 };
 
 /*------ etc ------*/
